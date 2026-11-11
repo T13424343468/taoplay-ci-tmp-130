@@ -34,7 +34,9 @@ jobs:
       - name: Install system image
         run: |
           yes | sdkmanager --licenses > /dev/null || true
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-${{ matrix.api }};google_apis;x86_64" > /dev/null
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-${{ matrix.api }};google_apis;x86_64" "platform-tools" > /dev/null
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          adb version
 
       - name: Create AVD (device-level approximation)
         run: |
@@ -54,6 +56,9 @@ jobs:
 
       - name: Boot emulator
         run: |
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          adb start-server || true
+          adb devices
           emulator -avd ${{ matrix.device }} -no-window -no-audio -no-boot-anim -gpu swiftshader-indirect -no-snapshot -camera-back none -camera-front none > emulator.log 2>&1 &
           for i in $(seq 1 60); do
             BOOT=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
@@ -65,13 +70,18 @@ jobs:
 
       - name: Install APK
         run: |
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          adb devices
           adb install -r -t TaoPlay-130.apk
-          PKG=$(aapt2 badging TaoPlay-130.apk | head -1 | sed "s/.*package:name='\([^']*\)'.*/\1/")
+          AAPT2=$(ls $ANDROID_HOME/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
+          echo "AAPT2=$AAPT2"
+          PKG=$("$AAPT2" badging TaoPlay-130.apk | head -1 | sed "s/.*package:name='\([^']*\)'.*/\1/")
           echo "PKG=$PKG" >> "$GITHUB_ENV"
           echo "package: $PKG"
 
       - name: Launch and capture UI
         run: |
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
           adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1
           sleep 30
           adb shell uiautomator dump || true
