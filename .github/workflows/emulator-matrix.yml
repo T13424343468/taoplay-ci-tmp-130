@@ -34,11 +34,11 @@ jobs:
       - name: Install system image
         run: |
           yes | sdkmanager --licenses > /dev/null || true
-          yes | sdkmanager --install "system-images;android-${{ matrix.api }};google_apis;x86_64" > /dev/null
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-${{ matrix.api }};google_apis;x86_64" > /dev/null
 
       - name: Create AVD (device-level approximation)
         run: |
-          avdmanager create avd -n ${{ matrix.device }} -k "system-images;android-${{ matrix.api }};google_apis;x86_64" -d pixel_4a --force
+          $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n ${{ matrix.device }} -k "system-images;android-${{ matrix.api }};google_apis;x86_64" -d pixel_4a --force
           CFG="$HOME/.android/avd/${{ matrix.device }}.avd/config.ini"
           sed -i '/hw.lcd.width/d;/hw.lcd.height/d;/hw.lcd.density/d' "$CFG"
           printf 'hw.lcd.width=%s\nhw.lcd.height=%s\nhw.lcd.density=%s\n' \
