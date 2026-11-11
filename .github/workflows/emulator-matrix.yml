@@ -1,0 +1,85 @@
+name: emulator-matrix-test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  avd-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: oneplus-15t
+            width: 2640
+            height: 1216
+            density: 460
+            api: 35
+          - device: oneplus-ace5
+            width: 2780
+            height: 1264
+            density: 450
+            api: 35
+    name: avd-${{ matrix.device }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install system image
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          yes | sdkmanager --install "system-images;android-${{ matrix.api }};google_apis;x86_64" > /dev/null
+
+      - name: Create AVD (device-level approximation)
+        run: |
+          avdmanager create avd -n ${{ matrix.device }} -k "system-images;android-${{ matrix.api }};google_apis;x86_64" -d pixel_4a --force
+          CFG="$HOME/.android/avd/${{ matrix.device }}.avd/config.ini"
+          sed -i '/hw.lcd.width/d;/hw.lcd.height/d;/hw.lcd.density/d' "$CFG"
+          printf 'hw.lcd.width=%s\nhw.lcd.height=%s\nhw.lcd.density=%s\n' \
+            "${{ matrix.width }}" "${{ matrix.height }}" "${{ matrix.density }}" >> "$CFG"
+          cat "$CFG"
+
+      - name: Boot emulator
+        run: |
+          emulator -avd ${{ matrix.device }} -no-window -no-audio -no-boot-anim -gpu swiftshader-indirect -no-snapshot -camera-back none -camera-front none > emulator.log 2>&1 &
+          for i in $(seq 1 60); do
+            BOOT=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            if [ "$BOOT" = "1" ]; then echo "boot completed"; break; fi
+            sleep 10
+          done
+          adb shell getprop sys.boot_completed
+          adb devices
+
+      - name: Install APK
+        run: |
+          adb install -r -t TaoPlay-130.apk
+          PKG=$(aapt2 badging TaoPlay-130.apk | head -1 | sed "s/.*package:name='\([^']*\)'.*/\1/")
+          echo "PKG=$PKG" >> "$GITHUB_ENV"
+          echo "package: $PKG"
+
+      - name: Launch and capture UI
+        run: |
+          adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1
+          sleep 30
+          adb shell uiautomator dump || true
+          adb pull /sdcard/window_dump.xml ui_dump.xml || true
+          adb exec-out screencap -p > home_${{ matrix.device }}.png
+          adb shell logcat -d > logcat_${{ matrix.device }}.txt
+          grep -c "FATAL EXCEPTION" logcat_${{ matrix.device }}.txt || true
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-${{ matrix.device }}
+          path: |
+            home_${{ matrix.device }}.png
+            ui_dump.xml
+            logcat_${{ matrix.device }}.txt
+            emulator.log
+          if-no-files-found: warn
