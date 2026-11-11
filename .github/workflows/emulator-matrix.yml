@@ -53,20 +53,28 @@ jobs:
           printf 'hw.lcd.width=%s\nhw.lcd.height=%s\nhw.lcd.density=%s\n' \
             "${{ matrix.width }}" "${{ matrix.height }}" "${{ matrix.density }}" >> "$CFG"
           cat "$CFG"
+          echo "--- AVD dir ---"; ls -la "$HOME/.android/avd" 2>/dev/null || true
+          cp "$CFG" config-dump.txt
 
       - name: Boot emulator
         run: |
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          ls -la /dev/kvm 2>&1 || echo "NO_KVM_DEVICE"
           adb start-server || true
           adb devices
           emulator -avd ${{ matrix.device }} -no-window -no-audio -no-boot-anim -gpu swiftshader-indirect -no-snapshot -camera-back none -camera-front none > emulator.log 2>&1 &
-          for i in $(seq 1 60); do
+          EMUPID=$!
+          echo "EMU_PID=$EMUPID"
+          BOOT_OK=0
+          for i in $(seq 1 90); do
+            if ! kill -0 "$EMUPID" 2>/dev/null; then echo "EMULATOR_DIED"; tail -40 emulator.log; break; fi
             BOOT=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-            if [ "$BOOT" = "1" ]; then echo "boot completed"; break; fi
+            if [ "$BOOT" = "1" ]; then echo "boot completed at iter $i"; BOOT_OK=1; break; fi
             sleep 10
           done
-          adb shell getprop sys.boot_completed
-          adb devices
+          echo "BOOT_OK=$BOOT_OK"
+          adb devices || true
+          [ "$BOOT_OK" = "1" ] || { echo "=== emulator.log tail ==="; tail -60 emulator.log; exit 1; }
 
       - name: Install APK
         run: |
@@ -90,7 +98,18 @@ jobs:
           adb shell logcat -d > logcat_${{ matrix.device }}.txt
           grep -c "FATAL EXCEPTION" logcat_${{ matrix.device }}.txt || true
 
+      - name: Upload boot diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-diag-${{ matrix.device }}
+          path: |
+            emulator.log
+            config-dump.txt
+          if-no-files-found: warn
+
       - name: Upload evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: evidence-${{ matrix.device }}
