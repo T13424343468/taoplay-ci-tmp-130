@@ -38,8 +38,13 @@ jobs:
 
       - name: Create AVD (device-level approximation)
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n ${{ matrix.device }} -k "system-images;android-${{ matrix.api }};google_apis;x86_64" -d pixel_4a --force
-          CFG="$HOME/.android/avd/${{ matrix.device }}.avd/config.ini"
+          set -x
+          $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n ${{ matrix.device }} -k "system-images;android-${{ matrix.api }};google_apis;x86_64" -d pixel_4a --force || true
+          find "$HOME/.android" -maxdepth 3 -name "config.ini" 2>/dev/null
+          ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME/${{ matrix.device }}.avd"
+          CFG=$(find "$HOME/.android" -path "*${{ matrix.device }}.avd/config.ini" 2>/dev/null | head -1)
+          [ -z "$CFG" ] && CFG="$ANDROID_AVD_HOME/${{ matrix.device }}.avd/config.ini" && printf 'avd.ini.encoding=UTF-8\nimage.sysdir.1=system-images/android-${{ matrix.api }}/google_apis/x86_64/\ntag.display=Android API ${{ matrix.api }}\nskin.name=pixel_4a\nskin.dynamic=yes\n' > "$CFG"
           sed -i '/hw.lcd.width/d;/hw.lcd.height/d;/hw.lcd.density/d' "$CFG"
           printf 'hw.lcd.width=%s\nhw.lcd.height=%s\nhw.lcd.density=%s\n' \
             "${{ matrix.width }}" "${{ matrix.height }}" "${{ matrix.density }}" >> "$CFG"
