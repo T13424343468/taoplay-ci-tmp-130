@@ -255,6 +255,9 @@ jobs:
           adb wait-for-device >/dev/null 2>&1 || true
           adb shell "ls -la /data/anr/" > anr_listing.txt 2>&1 || true
           adb pull /data/anr anr_traces >/dev/null 2>&1 || true
+          # v3.25.32: 应用内置现场记录仪 (主线程卡死自落账), 一并拉进证据包
+          adb pull /data/data/com.allplayer.phone/files/anr_watchdog anr_watchdog >/dev/null 2>&1 || true
+          ls anr_watchdog/ 2>/dev/null || echo "(no watchdog files)"
           adb shell dumpsys activity processes > dumpsys_processes.txt 2>&1 || true
           echo "ANR traces:"; ls anr_traces/ 2>/dev/null || echo "(pull failed)"
 
