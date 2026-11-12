@@ -122,6 +122,12 @@ jobs:
           sleep 3
           adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/taoplay_test.mp4 || true
           adb shell ls -la /sdcard/Movies/ || true
+          # R25 坑：扫描广播不保证及时入媒体库，轮询确认，未入就补发广播重试
+          for i in $(seq 1 12); do
+            if adb shell "content query --uri content://media/external/video/media --projection _display_name" 2>/dev/null | grep -q taoplay_test; then echo "MEDIA_INDEXED iter $i"; break; fi
+            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/taoplay_test.mp4 >/dev/null 2>&1 || true
+            sleep 5
+          done
           adb shell uiautomator dump || true
           WAITB=$(sed -n 's/.*text="Wait"[^>]*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' /sdcard/window_dump.xml | head -1)
           if [ -n "$WAITB" ]; then
