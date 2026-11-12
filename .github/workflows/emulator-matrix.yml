@@ -180,6 +180,13 @@ jobs:
           else
             adb shell am start -a android.intent.action.VIEW -d "file:///sdcard/Movies/taoplay_test.mp4" -t "video/*" -p "$PKG" || true
           fi
+          # 周期性落 Java 堆栈: ANR 到系统杀进程窗口太短, 发作前最后一份即真账
+          ( while :; do
+              P=$(adb shell pidof "$PKG" | tr -d '\r')
+              if [ -n "$P" ]; then adb shell kill -3 "$P" >/dev/null 2>&1 || true; sleep 2; adb pull /data/anr/traces.txt "/tmp/jstack_${{ matrix.device }}_$(date +%s).txt" >/dev/null 2>&1 || true; fi
+              sleep 8
+            done ) &
+          CAP_PID=$!
           sleep 12
           dump_pull after_tap_dump.xml
           if grep -q "com.google.android.apps.photos" after_tap_dump.xml; then
@@ -223,6 +230,9 @@ jobs:
           dump_pull after_tap_dump.xml
           echo "--- player dump texts (tap2) ---"
           grep -oP '(text|content-desc)="[^"]+"' after_tap_dump.xml | sort -u || true
+          kill $CAP_PID 2>/dev/null || true
+          mkdir -p jstacks && cp /tmp/jstack_${{ matrix.device }}_*.txt jstacks/ 2>/dev/null || true
+          echo "JSTACK_COUNT=$(ls jstacks/ 2>/dev/null | wc -l)"
           adb shell logcat -d > logcat_${{ matrix.device }}.txt
           echo "FATAL_COUNT=$(grep -c 'FATAL EXCEPTION' logcat_${{ matrix.device }}.txt || true)"
 
@@ -273,6 +283,7 @@ jobs:
             emulator.log
             anr_listing.txt
             anr_traces/
+            jstacks/
             dumpsys_processes.txt
             meminfo_anr.txt
           if-no-files-found: warn
