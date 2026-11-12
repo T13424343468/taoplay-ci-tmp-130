@@ -1,0 +1,3 @@
+avd.ini.encoding=UTF-8
+path=/home/runner/.android/avd/oneplus-15t.avd
+target=android-35

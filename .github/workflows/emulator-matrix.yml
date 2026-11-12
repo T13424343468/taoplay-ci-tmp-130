@@ -193,7 +193,7 @@ jobs:
               sleep 4
               continue
             fi
-            if grep -qP 'text="[0-9]{3,4}P' /tmp/d.xml; then
+            if grep -qP 'text="[0-9]{1,4}[PK]' /tmp/d.xml; then
               echo "player controls visible at loop $i"
               break
             fi
@@ -223,7 +223,7 @@ jobs:
           FAIL=0
           if grep -q "com.google.android.apps.photos" player_dump.xml after_tap_dump.xml 2>/dev/null; then echo "PLAYER WRONG APP: Photos intercepted"; FAIL=1; else echo "PLAYER_OK: TaoPlay player captured"; fi
           if grep -q "辅助" player_dump.xml after_tap_dump.xml 2>/dev/null; then echo "TP-M02 FAIL: assist button present"; FAIL=1; else echo "TP-M02 PASS: no assist button in player controls"; fi
-          Q=$(grep -hoP 'text="[0-9]{3,4}P[^"]*"' player_dump.xml after_tap_dump.xml 2>/dev/null | head -5)
+          Q=$(grep -hoP 'text="[0-9]{1,4}[PK][^"]*"' player_dump.xml after_tap_dump.xml 2>/dev/null | head -5)
           if [ -n "$Q" ]; then echo "TP-M03 PASS: quality row found: $Q"; else echo "TP-M03 FAIL: quality row text not found"; FAIL=1; fi
           echo "ACCEPTANCE_FAIL=$FAIL"
           [ "$FAIL" = "0" ] || exit 1

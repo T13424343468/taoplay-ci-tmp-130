@@ -7,6 +7,7 @@
 
 
 ## 修红坑清单（每轮改脚本前必过，R4-R22 实录）
+- R23：验收档位正则只认数字+P（720P/1080P），折叠屏上报「2K」直接漏判——档位正则统一为 数字/2K/4K 通吃（[0-9]{1,4}[PK]）
 
 1. 工具缺失：adb/emulator/aapt2 必须装齐并 PATH；aapt2 用 dump badging，无 badging 子命令
 2. 包名提取：只能 grep -oP "package: name='\K[^']+" 精确取，禁 sed 贪婪匹配
