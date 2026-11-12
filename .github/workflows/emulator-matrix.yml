@@ -193,6 +193,11 @@ jobs:
             dump_pull /tmp/d.xml
             if tap_text /tmp/d.xml "Wait"; then
               echo "ANR wait dismissed at loop $i"
+              # Java 级堆栈: ANR 对话框在屏时先给应用发 SIGQUIT 让 ART 落完整 Java 堆栈到 /data/anr, 再拉走
+              APID=$(adb shell pidof "$PKG" | tr -d '\r')
+              if [ -n "$APID" ]; then adb shell kill -3 "$APID" >/dev/null 2>&1 || true; sleep 3; fi
+              adb pull /data/anr anr_traces >/dev/null 2>&1 || true
+              adb shell dumpsys meminfo "$PKG" > meminfo_anr.txt 2>&1 || true
               sleep 4
               continue
             fi
@@ -269,4 +274,5 @@ jobs:
             anr_listing.txt
             anr_traces/
             dumpsys_processes.txt
+            meminfo_anr.txt
           if-no-files-found: warn
