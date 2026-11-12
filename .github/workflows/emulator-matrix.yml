@@ -20,6 +20,27 @@ jobs:
             height: 1264
             density: 450
             api: 35
+          # ---- 兼容性拉开差距矩阵（R23 起生效） ----
+          - device: small-720p          # 小屏低配：最低分辨率+低密度
+            width: 720
+            height: 1600
+            density: 280
+            api: 35
+          - device: tablet-10           # 大屏平板：横屏大分辨率+低密度
+            width: 2560
+            height: 1600
+            density: 320
+            api: 35
+          - device: fold-inner          # 折叠屏内屏：近方形比例
+            width: 2208
+            height: 1768
+            density: 420
+            api: 35
+          - device: legacy-api30        # 老系统：Android 11 镜像
+            width: 1080
+            height: 2400
+            density: 440
+            api: 30
     name: avd-${{ matrix.device }}
     steps:
       - name: Checkout
