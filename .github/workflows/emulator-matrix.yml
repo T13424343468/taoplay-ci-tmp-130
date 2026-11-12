@@ -99,7 +99,7 @@ jobs:
           adb install -r -t TaoPlay-130.apk
           AAPT2=$(ls $ANDROID_HOME/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
           echo "AAPT2=$AAPT2"
-          PKG=$("$AAPT2" dump badging TaoPlay-130.apk | head -1 | sed "s/.*package:name='\([^']*\)'.*/\1/")
+          PKG=$("$AAPT2" dump badging TaoPlay-130.apk | sed -n "1s/.*name='\([^']\+\)'.*/\1/p")
           if [ -z "$PKG" ] || [ "$PKG" = "TaoPlay-130.apk" ]; then echo "PKG_EXTRACT_FAILED"; "$AAPT2" dump badging TaoPlay-130.apk | head -3; exit 1; fi
           echo "PKG=$PKG" >> "$GITHUB_ENV"
           echo "package: $PKG"
