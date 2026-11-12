@@ -97,8 +97,9 @@ jobs:
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
           adb devices
           adb install -r -t -g TaoPlay-130.apk
-          ffmpeg -f lavfi -i testsrc=duration=60:size=640x360:rate=24 -pix_fmt yuv420p -y test_video.mp4
-          adb push test_video.mp4 /sdcard/Movies/taoplay_test.mp4
+          adb shell screenrecord --time-limit 10 /sdcard/Movies/taoplay_test.mp4 || true
+          sleep 2
+          adb shell ls -la /sdcard/Movies/ || true
           AAPT2=$(ls $ANDROID_HOME/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
           echo "AAPT2=$AAPT2"
           PKG=$("$AAPT2" dump badging TaoPlay-130.apk | head -1 | grep -oP "package: name='\K[^']+")
