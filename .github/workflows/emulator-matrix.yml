@@ -33,6 +33,7 @@ jobs:
 
       - name: Install system image
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libpulse0 > /dev/null || true
           yes | sdkmanager --licenses > /dev/null || true
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-${{ matrix.api }};google_apis;x86_64" "platform-tools" "emulator" > /dev/null
           export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
@@ -42,20 +43,30 @@ jobs:
       - name: Create AVD (device-level approximation)
         run: |
           set -x
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
           $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n ${{ matrix.device }} -k "system-images;android-${{ matrix.api }};google_apis;x86_64" -d pixel_4a --force || true
-          find "$HOME" -maxdepth 4 -name "*.avd" -o -maxdepth 4 -name "config.ini" 2>/dev/null | head -5 || true
-          ls -la "$HOME/.android" 2>/dev/null || echo "no .android dir"
-          ANDROID_AVD_HOME="$HOME/.android/avd"
-          mkdir -p "$ANDROID_AVD_HOME/${{ matrix.device }}.avd"
-          CFG=$(find "$HOME/.android" -path "*${{ matrix.device }}.avd/config.ini" 2>/dev/null | head -1 || true)
-          [ -z "$CFG" ] && CFG="$ANDROID_AVD_HOME/${{ matrix.device }}.avd/config.ini" && printf 'avd.ini.encoding=UTF-8\nimage.sysdir.1=system-images/android-${{ matrix.api }}/google_apis/x86_64/\ntag.display=Android API ${{ matrix.api }}\nskin.name=pixel_4a\nskin.dynamic=yes\n' > "$CFG"
+          ls -la "$ANDROID_AVD_HOME" || true
+          CFG=$(find "$ANDROID_AVD_HOME" -path "*${{ matrix.device }}.avd/config.ini" 2>/dev/null | head -1 || true)
+          if [ -z "$CFG" ]; then
+            mkdir -p "$ANDROID_AVD_HOME/${{ matrix.device }}.avd"
+            CFG="$ANDROID_AVD_HOME/${{ matrix.device }}.avd/config.ini"
+            printf 'avd.ini.encoding=UTF-8\nimage.sysdir.1=system-images/android-${{ matrix.api }}/google_apis/x86_64/\ntag.display=Android API ${{ matrix.api }}\nskin.name=pixel_4a\nskin.dynamic=yes\n' > "$CFG"
+          fi
           echo "CFG=$CFG"
           sed -i '/hw.lcd.width/d;/hw.lcd.height/d;/hw.lcd.density/d' "$CFG"
           printf 'hw.lcd.width=%s\nhw.lcd.height=%s\nhw.lcd.density=%s\n' \
             "${{ matrix.width }}" "${{ matrix.height }}" "${{ matrix.density }}" >> "$CFG"
+          INI="$ANDROID_AVD_HOME/${{ matrix.device }}.ini"
+          if [ ! -f "$INI" ]; then
+            printf 'avd.ini.encoding=UTF-8\npath=%s/%s.avd\npath.rel=avd/%s.avd\n' "$ANDROID_AVD_HOME" "${{ matrix.device }}" "${{ matrix.device }}" > "$INI"
+          fi
+          echo "--- INI ---"; cat "$INI"
           cat "$CFG"
-          echo "--- AVD dir ---"; ls -la "$HOME/.android/avd" 2>/dev/null || true
+          echo "--- AVD dir ---"; ls -la "$ANDROID_AVD_HOME" || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd || true
           cp "$CFG" config-dump.txt
+          cp "$INI" config-dump.txt
 
       - name: Boot emulator
         run: |
