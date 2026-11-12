@@ -34,9 +34,10 @@ jobs:
       - name: Install system image
         run: |
           yes | sdkmanager --licenses > /dev/null || true
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-${{ matrix.api }};google_apis;x86_64" "platform-tools" > /dev/null
-          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-${{ matrix.api }};google_apis;x86_64" "platform-tools" "emulator" > /dev/null
+          export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
           adb version
+          emulator -version | head -1
 
       - name: Create AVD (device-level approximation)
         run: |
@@ -60,6 +61,8 @@ jobs:
         run: |
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
           ls -la /dev/kvm 2>&1 || echo "NO_KVM_DEVICE"
+          export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          emulator -version | head -1
           adb start-server || true
           adb devices
           emulator -avd ${{ matrix.device }} -no-window -no-audio -no-boot-anim -gpu swiftshader-indirect -no-snapshot -camera-back none -camera-front none > emulator.log 2>&1 &
