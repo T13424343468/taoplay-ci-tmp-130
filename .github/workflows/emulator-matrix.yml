@@ -96,7 +96,9 @@ jobs:
         run: |
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
           adb devices
-          adb install -r -t TaoPlay-130.apk
+          adb install -r -t -g TaoPlay-130.apk
+          ffmpeg -f lavfi -i testsrc=duration=60:size=640x360:rate=24 -pix_fmt yuv420p -y test_video.mp4
+          adb push test_video.mp4 /sdcard/Movies/taoplay_test.mp4
           AAPT2=$(ls $ANDROID_HOME/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
           echo "AAPT2=$AAPT2"
           PKG=$("$AAPT2" dump badging TaoPlay-130.apk | head -1 | grep -oP "package: name='\K[^']+")
@@ -108,10 +110,26 @@ jobs:
         run: |
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
           adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1
-          sleep 30
+          sleep 25
           adb shell uiautomator dump || true
-          adb pull /sdcard/window_dump.xml ui_dump.xml || true
+          adb pull /sdcard/window_dump.xml home_dump.xml || true
           adb exec-out screencap -p > home_${{ matrix.device }}.png
+          # parse first list node containing taoplay_test from home dump
+          COORDS=$(sed -n 's/.*taoplay_test[^"]*"[^>]*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' home_dump.xml | head -1)
+          echo "COORDS=$COORDS"
+          if [ -n "$COORDS" ]; then
+            set -- $COORDS
+            X=$(( ($1 + $3) / 2 ))
+            Y=$(( ($2 + $4) / 2 ))
+            adb shell input tap $X $Y
+          else
+            adb shell input tap 540 1400
+          fi
+          sleep 12
+          adb shell uiautomator dump || true
+          adb pull /sdcard/window_dump.xml player_dump.xml || true
+          sleep 8
+          adb exec-out screencap -p > player_${{ matrix.device }}.png
           adb shell logcat -d > logcat_${{ matrix.device }}.txt
           grep -c "FATAL EXCEPTION" logcat_${{ matrix.device }}.txt || true
 
@@ -132,7 +150,9 @@ jobs:
           name: evidence-${{ matrix.device }}
           path: |
             home_${{ matrix.device }}.png
-            ui_dump.xml
+            home_dump.xml
+            player_${{ matrix.device }}.png
+            player_dump.xml
             logcat_${{ matrix.device }}.txt
             emulator.log
           if-no-files-found: warn
