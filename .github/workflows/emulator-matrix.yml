@@ -99,7 +99,18 @@ jobs:
           adb install -r -t -g TaoPlay-130.apk
           adb shell screenrecord --time-limit 10 /sdcard/Movies/taoplay_test.mp4 || true
           sleep 2
+          adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Movies/taoplay_test.mp4 || true
           adb shell ls -la /sdcard/Movies/ || true
+          adb reboot || true
+          BOOT2=0
+          for i in $(seq 1 60); do
+            B=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            if [ "$B" = "1" ]; then echo "reboot boot completed"; BOOT2=1; break; fi
+            sleep 10
+          done
+          echo "BOOT2=$BOOT2"
+          sleep 10
+          adb shell "content query --uri content://media/external/video/media --projection _display_name" || true
           AAPT2=$(ls $ANDROID_HOME/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
           echo "AAPT2=$AAPT2"
           PKG=$("$AAPT2" dump badging TaoPlay-130.apk | head -1 | grep -oP "package: name='\K[^']+")
