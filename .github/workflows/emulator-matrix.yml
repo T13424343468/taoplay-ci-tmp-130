@@ -36,11 +36,8 @@ jobs:
             height: 1768
             density: 420
             api: 35
-          - device: legacy-api30        # 老系统：Android 11 镜像
-            width: 1080
-            height: 2400
-            density: 440
-            api: 30
+          # legacy-api30（Android 11）已移出矩阵：2026-11-12 老板定——不再考虑；
+          # 记档：该环境启动即原生崩溃（非法指令），复现 2/2，冻案待真机有需要时再启
     name: avd-${{ matrix.device }}
     steps:
       - name: Checkout
