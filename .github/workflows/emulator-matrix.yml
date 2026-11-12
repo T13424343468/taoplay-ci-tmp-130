@@ -111,10 +111,13 @@ jobs:
           done
           echo "BOOT2=$BOOT2"
           sleep 20
-          adb shell input keyevent 4 || true
-          sleep 3
-          adb shell input keyevent 4 || true
-          sleep 3
+          adb shell uiautomator dump || true
+          WAITB=$(sed -n 's/.*text="Wait"[^>]*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' /sdcard/window_dump.xml | head -1)
+          if [ -n "$WAITB" ]; then
+            set -- $WAITB
+            adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 )) || true
+          fi
+          sleep 5
           adb shell "content query --uri content://media/external/video/media --projection _display_name" || true
           AAPT2=$(ls $ANDROID_HOME/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
           echo "AAPT2=$AAPT2"
@@ -144,9 +147,15 @@ jobs:
           fi
           sleep 12
           adb shell uiautomator dump || true
+          adb pull /sdcard/window_dump.xml after_tap_dump.xml || true
+          # direct VIEW intent to open the test video in the player
+          adb shell am start -a android.intent.action.VIEW -d "file:///sdcard/Movies/taoplay_test.mp4" -t "video/*" || true
+          sleep 15
+          adb shell uiautomator dump || true
           adb pull /sdcard/window_dump.xml player_dump.xml || true
-          sleep 8
+          sleep 5
           adb exec-out screencap -p > player_${{ matrix.device }}.png
+          adb exec-out screencap -p > home_${{ matrix.device }}.png
           adb shell logcat -d > logcat_${{ matrix.device }}.txt
           grep -c "FATAL EXCEPTION" logcat_${{ matrix.device }}.txt || true
 
@@ -168,6 +177,7 @@ jobs:
           path: |
             home_${{ matrix.device }}.png
             home_dump.xml
+            after_tap_dump.xml
             player_${{ matrix.device }}.png
             player_dump.xml
             logcat_${{ matrix.device }}.txt
