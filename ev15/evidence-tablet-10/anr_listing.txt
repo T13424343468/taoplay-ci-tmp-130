@@ -1,0 +1,4 @@
+total 108
+drwxrwxr-x  2 system system  4096 2026-11-12 14:11 .
+drwxrwx--x 51 system system  4096 2026-11-12 14:07 ..
+-rw-------  1 system system 88551 2026-11-12 14:11 anr_2026-11-12-14-11-17-092
