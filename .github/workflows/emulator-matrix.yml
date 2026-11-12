@@ -167,20 +167,16 @@ jobs:
           # player open may block the main thread and raise ANR: keep tapping Wait so the app survives, up to 90s
           for i in $(seq 1 18); do
             dump_pull /tmp/d.xml
-            if grep -q "photos\|launcher" /tmp/d.xml && ! grep -q "allplayer" /tmp/d.xml; then
-              INAPPS=$(adb shell dumpsys activity activities 2>/dev/null | grep -c "com.allplayer.phone" || true)
-              echo "in-app procs: $INAPPS"
-            fi
             if tap_text /tmp/d.xml "Wait"; then
               echo "ANR wait dismissed at loop $i"
               sleep 4
-            else
-              if grep -oP '(text|content-desc)="[^"]+"' /tmp/d.xml | grep -qvE "Chrome|Gmail|Messages|Phone|Photos|YouTube|Thu, Nov 12|Home|At a glance|Predicted app"; then
-                echo "app content visible at loop $i"
-                break
-              fi
-              sleep 4
+              continue
             fi
+            if grep -qP 'text="[0-9]{3,4}P' /tmp/d.xml; then
+              echo "player controls visible at loop $i"
+              break
+            fi
+            sleep 4
           done
           for i in 1 2 3; do
             dump_pull /tmp/d.xml
